@@ -1,9 +1,6 @@
 build:
   app:
     context: .
-    # Okteto builds this image and pushes it to the namespace registry.
-    # The resulting reference is available as ${OKTETO_BUILD_APP_IMAGE} in deploy commands.
-    image: ${OKTETO_REGISTRY}/okteto-env-test
 
 deploy:
   commands:

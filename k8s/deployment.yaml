@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: app
-          # OKTETO_REGISTRY is substituted by envsubst in the deploy command
-          image: ${OKTETO_REGISTRY}/okteto-env-test:${OKTETO_GIT_COMMIT:-latest}
+          # OKTETO_BUILD_APP_IMAGE is set by Okteto after the build step completes
+          image: ${OKTETO_BUILD_APP_IMAGE}
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
