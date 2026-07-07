@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: okteto-env-test
+  labels:
+    app: okteto-env-test
+  annotations:
+    # Tells Okteto to auto-generate a public hostname for this ingress
+    dev.okteto.com/generate-host: "true"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: okteto-env-test
+                port:
+                  number: 3000

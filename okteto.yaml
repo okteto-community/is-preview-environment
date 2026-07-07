@@ -1,0 +1,57 @@
+build:
+  app:
+    context: .
+    # Okteto builds this image and pushes it to the namespace registry.
+    # The resulting reference is available as ${OKTETO_BUILD_APP_IMAGE} in deploy commands.
+    image: ${OKTETO_REGISTRY}/okteto-env-test
+
+deploy:
+  commands:
+    # ── Step 1: print the variable at deploy time ──────────────────────────────
+    # This is visible in ALL deployment methods:
+    #   okteto deploy / okteto pipeline deploy / okteto preview deploy / UI deploy
+    - name: Print Okteto environment variables
+      command: |
+        echo "================================================"
+        echo "  OKTETO_IS_PREVIEW_ENVIRONMENT = ${OKTETO_IS_PREVIEW_ENVIRONMENT:-'(not set)'}"
+        echo "  OKTETO_NAMESPACE              = ${OKTETO_NAMESPACE:-'(not set)'}"
+        echo "  OKTETO_DOMAIN                 = ${OKTETO_DOMAIN:-'(not set)'}"
+        echo "  OKTETO_GIT_BRANCH             = ${OKTETO_GIT_BRANCH:-'(not set)'}"
+        echo "  OKTETO_GIT_COMMIT             = ${OKTETO_GIT_COMMIT:-'(not set)'}"
+        echo "================================================"
+
+    # ── Step 2: apply manifests, forwarding the vars into the container ────────
+    # envsubst replaces ${...} placeholders in the YAML before kubectl sees them.
+    # This is how OKTETO_IS_PREVIEW_ENVIRONMENT reaches the running pod.
+    - name: Deploy Kubernetes manifests
+      command: |
+        # Export with a safe default so envsubst never leaves an empty placeholder
+        export OKTETO_IS_PREVIEW_ENVIRONMENT="${OKTETO_IS_PREVIEW_ENVIRONMENT:-false}"
+        export OKTETO_NAMESPACE="${OKTETO_NAMESPACE}"
+        export OKTETO_DOMAIN="${OKTETO_DOMAIN}"
+        export OKTETO_GIT_BRANCH="${OKTETO_GIT_BRANCH:-unknown}"
+        export OKTETO_GIT_COMMIT="${OKTETO_GIT_COMMIT:-latest}"
+        export OKTETO_REGISTRY="${OKTETO_REGISTRY}"
+
+        envsubst < k8s/deployment.yaml | kubectl apply -f -
+        kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/ingress.yaml
+
+    - name: Wait for rollout
+      command: kubectl rollout status deployment/okteto-env-test --timeout=120s
+
+# ── Dev mode (okteto up) ───────────────────────────────────────────────────────
+# `okteto up` hot-reloads your local server.js into the running container.
+# Note: OKTETO_IS_PREVIEW_ENVIRONMENT is NOT set in dev mode because dev
+# environments are not preview environments. This is useful for comparison.
+dev:
+  app:
+    image: ${OKTETO_BUILD_APP_IMAGE}
+    command: node server.js
+    sync:
+      - .:/app
+    forward:
+      - 3000:3000
+    environment:
+      # Explicitly show what the variable looks like in dev mode (empty / false)
+      - OKTETO_IS_PREVIEW_ENVIRONMENT=${OKTETO_IS_PREVIEW_ENVIRONMENT}

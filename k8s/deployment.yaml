@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: okteto-env-test
+  labels:
+    app: okteto-env-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: okteto-env-test
+  template:
+    metadata:
+      labels:
+        app: okteto-env-test
+    spec:
+      containers:
+        - name: app
+          # OKTETO_REGISTRY is substituted by envsubst in the deploy command
+          image: ${OKTETO_REGISTRY}/okteto-env-test:${OKTETO_GIT_COMMIT:-latest}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            # Capture the value at deploy time so the running container can display it.
+            # envsubst replaces these placeholders before kubectl apply.
+            - name: OKTETO_IS_PREVIEW_ENVIRONMENT
+              value: "${OKTETO_IS_PREVIEW_ENVIRONMENT}"
+            - name: OKTETO_NAMESPACE
+              value: "${OKTETO_NAMESPACE}"
+            - name: OKTETO_DOMAIN
+              value: "${OKTETO_DOMAIN}"
+            - name: OKTETO_GIT_BRANCH
+              value: "${OKTETO_GIT_BRANCH}"
+            - name: OKTETO_GIT_COMMIT
+              value: "${OKTETO_GIT_COMMIT}"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
